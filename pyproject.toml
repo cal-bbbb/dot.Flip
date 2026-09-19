@@ -1,0 +1,26 @@
+[project]
+name = "dotflip"
+version = "0.1.0"
+description = "Right-click image converter for Windows with a batch GUI"
+requires-python = ">=3.10"
+dependencies = ["pillow>=11", "pillow-heif", "resvg-py", "PySide6"]
+
+[project.optional-dependencies]
+dev = ["pytest", "pyinstaller"]
+
+[project.scripts]
+dotflip = "dotflip.cli:main"
+
+[project.gui-scripts]
+dotflip-gui = "dotflip.gui.app:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
