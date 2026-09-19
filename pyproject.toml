@@ -1,6 +1,6 @@
 [project]
 name = "dotflip"
-version = "0.1.0"
+version = "1.0.0"
 description = "Right-click image converter for Windows with a batch GUI"
 requires-python = ">=3.10"
 dependencies = ["pillow>=11", "pillow-heif", "resvg-py", "PySide6"]
