@@ -354,6 +354,9 @@ class MainWindow(QMainWindow):
         from ..shell import register
 
         n = register.install()
+        if n == 0:
+            QMessageBox.information(self, "dot.Flip", "The Windows 11 right-click menu is already active, so nothing more was added.")
+            return
         QMessageBox.information(self, "dot.Flip", f"Right-click menu installed for {n} file types.")
 
     def remove_menu(self):

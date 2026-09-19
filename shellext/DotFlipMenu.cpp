@@ -27,6 +27,17 @@ static const FormatDef kFormats[] = {
 };
 static const int kFormatCount = sizeof(kFormats) / sizeof(kFormats[0]);
 static const int kMoreOptions = -1;
+static const int kOptions = -2;
+static const int kScales[] = {100, 50};  // keep in sync with dotflip/settings.py
+static const int kScaleCount = sizeof(kScales) / sizeof(kScales[0]);
+
+// Scale chosen via Options; DotFlip.exe --set-scale stores it in HKCU\Software\DotFlip\Scale.
+static int CurrentScale() {
+    DWORD v = 100, size = sizeof(v);
+    if (RegGetValueW(HKEY_CURRENT_USER, L"Software\\DotFlip", L"Scale", RRF_RT_REG_DWORD, nullptr, &v, &size) != ERROR_SUCCESS)
+        return 100;
+    return (int)v;
+}
 
 static const wchar_t* const kReadable[] = {
     L".png", L".jpg", L".jpeg", L".jpe", L".jfif", L".tif", L".tiff", L".gif", L".webp",
@@ -89,6 +100,21 @@ static void CleanOldLists(const std::wstring& dir) {
     FindClose(h);
 }
 
+static HRESULT RunExe(const std::wstring& args) {
+    std::wstring exe = ModuleDir() + L"\\DotFlip.exe";
+    std::wstring cmd = L"\"" + exe + L"\" " + args;
+    STARTUPINFOW si{sizeof(si)};
+    PROCESS_INFORMATION pi{};
+    std::vector<wchar_t> mutableCmd(cmd.begin(), cmd.end());
+    mutableCmd.push_back(L'\0');
+    if (!CreateProcessW(exe.c_str(), mutableCmd.data(), nullptr, nullptr, FALSE, 0, nullptr,
+                        ModuleDir().c_str(), &si, &pi))
+        return HRESULT_FROM_WIN32(GetLastError());
+    CloseHandle(pi.hThread);
+    CloseHandle(pi.hProcess);
+    return S_OK;
+}
+
 // Writes the selection to a list file and starts DotFlip.exe. `format` is null for the GUI.
 static HRESULT Launch(const wchar_t* format, IShellItemArray* items) {
     std::vector<std::wstring> paths = SelectedPaths(items);
@@ -110,21 +136,9 @@ static HRESULT Launch(const wchar_t* format, IShellItemArray* items) {
     WriteFile(f, data.data(), (DWORD)data.size(), &written, nullptr);
     CloseHandle(f);
 
-    std::wstring exe = ModuleDir() + L"\\DotFlip.exe";
-    std::wstring cmd = L"\"" + exe + L"\" ";
-    cmd += format ? (std::wstring(L"--to ") + format) : std::wstring(L"--gui");
-    cmd += L" --list \"" + list + L"\"";
-
-    STARTUPINFOW si{sizeof(si)};
-    PROCESS_INFORMATION pi{};
-    std::vector<wchar_t> mutableCmd(cmd.begin(), cmd.end());
-    mutableCmd.push_back(L'\0');
-    if (!CreateProcessW(exe.c_str(), mutableCmd.data(), nullptr, nullptr, FALSE, 0, nullptr,
-                        ModuleDir().c_str(), &si, &pi))
-        return HRESULT_FROM_WIN32(GetLastError());
-    CloseHandle(pi.hThread);
-    CloseHandle(pi.hProcess);
-    return S_OK;
+    std::wstring args = format ? (std::wstring(L"--to ") + format) : std::wstring(L"--gui");
+    args += L" --list \"" + list + L"\"";
+    return RunExe(args);
 }
 
 // ---- COM plumbing --------------------------------------------------------------------------
@@ -158,7 +172,9 @@ class SubCommand : public ComBase<SubCommand, IExplorerCommand> {
 public:
     explicit SubCommand(int index) : index_(index) {}
     IFACEMETHODIMP GetTitle(IShellItemArray*, PWSTR* name) override {
-        return SHStrDupW(index_ == kMoreOptions ? L"More options..." : kFormats[index_].label, name);
+        if (index_ == kMoreOptions) return SHStrDupW(L"More options...", name);
+        if (index_ == kOptions) return SHStrDupW(L"Options", name);
+        return SHStrDupW(kFormats[index_].label, name);
     }
     IFACEMETHODIMP GetIcon(IShellItemArray*, PWSTR* icon) override { *icon = nullptr; return E_NOTIMPL; }
     IFACEMETHODIMP GetToolTip(IShellItemArray*, PWSTR* tip) override { *tip = nullptr; return E_NOTIMPL; }
@@ -168,23 +184,51 @@ public:
         return S_OK;
     }
     IFACEMETHODIMP Invoke(IShellItemArray* items, IBindCtx*) override {
+        if (index_ == kOptions) return E_NOTIMPL;
         return Launch(index_ == kMoreOptions ? nullptr : kFormats[index_].id, items);
     }
     IFACEMETHODIMP GetFlags(EXPCMDFLAGS* flags) override {
-        *flags = index_ == kMoreOptions ? ECF_SEPARATORBEFORE : ECF_DEFAULT;
+        *flags = index_ == kOptions ? (EXPCMDFLAGS)(ECF_HASSUBCOMMANDS | ECF_SEPARATORBEFORE) : ECF_DEFAULT;
         return S_OK;
     }
-    IFACEMETHODIMP EnumSubCommands(IEnumExplorerCommand** e) override { *e = nullptr; return E_NOTIMPL; }
+    IFACEMETHODIMP EnumSubCommands(IEnumExplorerCommand** e) override;
 private:
     int index_;
 };
 
+// "Scale: 100%" / "Scale: 50%" under Options; the current one is checked.
+class ScaleCommand : public ComBase<ScaleCommand, IExplorerCommand> {
+public:
+    explicit ScaleCommand(int percent) : percent_(percent) {}
+    IFACEMETHODIMP GetTitle(IShellItemArray*, PWSTR* name) override {
+        std::wstring t = L"Scale: " + std::to_wstring(percent_) + L"%";
+        return SHStrDupW(t.c_str(), name);
+    }
+    IFACEMETHODIMP GetIcon(IShellItemArray*, PWSTR* icon) override { *icon = nullptr; return E_NOTIMPL; }
+    IFACEMETHODIMP GetToolTip(IShellItemArray*, PWSTR* tip) override { *tip = nullptr; return E_NOTIMPL; }
+    IFACEMETHODIMP GetCanonicalName(GUID* guid) override { *guid = GUID_NULL; return S_OK; }
+    IFACEMETHODIMP GetState(IShellItemArray*, BOOL, EXPCMDSTATE* state) override {
+        *state = CurrentScale() == percent_ ? (EXPCMDSTATE)(ECS_ENABLED | ECS_CHECKED) : ECS_ENABLED;
+        return S_OK;
+    }
+    IFACEMETHODIMP Invoke(IShellItemArray*, IBindCtx*) override {
+        return RunExe(L"--set-scale " + std::to_wstring(percent_));
+    }
+    IFACEMETHODIMP GetFlags(EXPCMDFLAGS* flags) override { *flags = ECF_DEFAULT; return S_OK; }
+    IFACEMETHODIMP EnumSubCommands(IEnumExplorerCommand** e) override { *e = nullptr; return E_NOTIMPL; }
+private:
+    int percent_;
+};
+
+enum class Level { Root, Options };
+
 class EnumCommands : public ComBase<EnumCommands, IEnumExplorerCommand> {
 public:
+    explicit EnumCommands(Level level) : level_(level) {}
     IFACEMETHODIMP Next(ULONG count, IExplorerCommand** out, ULONG* fetched) override {
         ULONG n = 0;
-        while (n < count && pos_ <= kFormatCount) {
-            out[n++] = new SubCommand(pos_ == kFormatCount ? kMoreOptions : pos_);
+        while (n < count && pos_ < Total()) {
+            out[n++] = Make(pos_);
             ++pos_;
         }
         if (fetched) *fetched = n;
@@ -193,14 +237,28 @@ public:
     IFACEMETHODIMP Skip(ULONG count) override { pos_ += count; return S_OK; }
     IFACEMETHODIMP Reset() override { pos_ = 0; return S_OK; }
     IFACEMETHODIMP Clone(IEnumExplorerCommand** out) override {
-        auto* c = new EnumCommands();
+        auto* c = new EnumCommands(level_);
         c->pos_ = pos_;
         *out = c;
         return S_OK;
     }
 private:
+    // Root: the formats, then Options (with a separator), then More options...
+    ULONG Total() const { return level_ == Level::Root ? kFormatCount + 2 : kScaleCount; }
+    IExplorerCommand* Make(ULONG i) const {
+        if (level_ == Level::Options) return new ScaleCommand(kScales[i]);
+        if (i < (ULONG)kFormatCount) return new SubCommand((int)i);
+        return new SubCommand(i == (ULONG)kFormatCount ? kOptions : kMoreOptions);
+    }
+    Level level_;
     ULONG pos_ = 0;
 };
+
+IFACEMETHODIMP SubCommand::EnumSubCommands(IEnumExplorerCommand** e) {
+    if (index_ != kOptions) { *e = nullptr; return E_NOTIMPL; }
+    *e = new EnumCommands(Level::Options);
+    return S_OK;
+}
 
 class RootCommand : public ComBase<RootCommand, IExplorerCommand> {
 public:
@@ -223,7 +281,7 @@ public:
     IFACEMETHODIMP Invoke(IShellItemArray*, IBindCtx*) override { return E_NOTIMPL; }
     IFACEMETHODIMP GetFlags(EXPCMDFLAGS* flags) override { *flags = ECF_HASSUBCOMMANDS; return S_OK; }
     IFACEMETHODIMP EnumSubCommands(IEnumExplorerCommand** e) override {
-        *e = new EnumCommands();
+        *e = new EnumCommands(Level::Root);
         return S_OK;
     }
 };

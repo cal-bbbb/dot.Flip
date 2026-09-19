@@ -37,11 +37,12 @@ Name: "{group}\dot.Flip"; Filename: "{app}\DotFlip.exe"
 Name: "{autodesktop}\dot.Flip"; Filename: "{app}\DotFlip.exe"; Tasks: desktopicon
 
 [Run]
-; Classic (Windows 10 / "Show more options") menu entries, per user.
-Filename: "{app}\DotFlip.exe"; Parameters: "--register"; Flags: runasoriginaluser runhidden; Tasks: contextmenu; StatusMsg: "Adding right-click menu..."
 ; Windows 11 top-level menu: trust our signing certificate, then register the sparse package for the user.
 Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""Import-Certificate -FilePath '{app}\DotFlip.cer' -CertStoreLocation Cert:\LocalMachine\TrustedPeople | Out-Null"""; Flags: runhidden; Tasks: contextmenu; Check: IsWindows11; StatusMsg: "Trusting dot.Flip package..."
 Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""Add-AppxPackage -Path '{app}\DotFlip.msix' -ExternalLocation '{app}'"""; Flags: runasoriginaluser runhidden; Tasks: contextmenu; Check: IsWindows11; StatusMsg: "Registering Windows 11 menu..."
+; Classic menu entries, per user. Run after the package step: --register skips itself (and removes old verbs)
+; when the Windows 11 package is present, since that package also feeds "Show more options".
+Filename: "{app}\DotFlip.exe"; Parameters: "--register"; Flags: runasoriginaluser runhidden; Tasks: contextmenu; StatusMsg: "Adding right-click menu..."
 Filename: "{app}\DotFlip.exe"; Description: "Open dot.Flip"; Flags: nowait postinstall skipifsilent
 
 [UninstallRun]

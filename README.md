@@ -19,7 +19,8 @@ adds dot.Flip to the Windows 11 menu.
 
 ## Use
 - **Right-click** one or more images → **Convert to** → pick a format. (On Windows 10, or under *Show more options*
-  on Windows 11, the same submenu is in the classic menu.) **More options…** opens the app with the files loaded.
+  on Windows 11, the same submenu is in the classic menu.) **Options ▸ Scale: 100% / 50%** sets the size of right-click conversions (the choice is remembered).
+  **More options…** opens the app with the files loaded.
 - **App:** drag in files or folders, choose a format, tune options, press Convert.
 - **Command line:** `DotFlip.exe --to webp --quality 80 photo.png` (see `--help`).
 

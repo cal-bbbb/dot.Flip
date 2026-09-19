@@ -147,3 +147,16 @@ def test_batch_same_stem_different_sources_get_distinct_outputs(tmp_path):
         results = run_batch([a, b], ConvertOptions(target="tiff"), workers=4)
         assert all(r.ok for r in results), [r.error for r in results]
         assert results[0].output != results[1].output
+
+
+@pytest.mark.parametrize("src_fmt", ["jpeg", "png", "webp", "avif"])
+def test_exif_with_sub_ifd_converts_to_tiff(tmp_path, src_fmt):
+    # Regression: EXIF sub-IFD pointers made libtiff fail with "Error setting from dictionary".
+    exif = Image.Exif()
+    exif[0x010F] = "Camera"
+    exif.get_ifd(0x8769)[0x9003] = "2020:01:01 00:00:00"
+    src = tmp_path / f"photo.{src_fmt}"
+    Image.new("RGB", (64, 48), "red").save(src, exif=exif)
+    out = convert(src, ConvertOptions(target="tiff", output_dir=tmp_path / "out"))
+    with Image.open(out) as im:
+        assert im.format == "TIFF"

@@ -123,6 +123,17 @@ def _prepare_frame(img: Image.Image, dst: Format, opts: ConvertOptions) -> Image
     return img
 
 
+_SUB_IFD_TAGS = (0x8769, 0x8825, 0xA005)  # Exif, GPS, Interoperability pointers
+
+
+def _flat_exif(exif: Image.Exif) -> Image.Exif:
+    flat = Image.Exif()
+    for tag, value in exif.items():
+        if tag not in _SUB_IFD_TAGS:
+            flat[tag] = value
+    return flat
+
+
 def _save_kwargs(dst: Format, opts: ConvertOptions) -> dict:
     o = {opt.key: opt.default for opt in dst.options}
     o.update(opts.format_options)
@@ -203,6 +214,9 @@ def convert(src, opts: ConvertOptions | None = None) -> Path | None:
             exif = img.getexif()
             if exif:
                 exif.pop(0x0112, None)  # orientation already applied
+                if dst.name == "tiff":
+                    # libtiff can't write Exif/GPS/interop sub-IFD pointers ("Error setting from dictionary")
+                    exif = _flat_exif(exif)
                 save_kw["exif"] = exif.tobytes()
             icc = img.info.get("icc_profile")
             if icc:

@@ -5,6 +5,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from . import settings
 from .core.batch import run_batch
 from .core.convert import ConvertOptions
 from .core.formats import FORMATS, WRITABLE, get_format
@@ -39,6 +40,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--list", type=Path, metavar="FILE", help="read input paths (UTF-8, one per line) from FILE, then delete it")
     p.add_argument("--register", action="store_true", help="install the Explorer right-click menu")
     p.add_argument("--unregister", action="store_true", help="remove the Explorer right-click menu")
+    p.add_argument("--set-scale", type=int, choices=settings.SCALES, metavar="PERCENT",
+                   help="scale used by right-click conversions: " + " or ".join(map(str, settings.SCALES)))
     p.add_argument("--quiet", "-q", action="store_true")
     return p
 
@@ -62,6 +65,13 @@ def main(argv=None) -> int:
             args.files += [Path(l) for l in args.list.read_text(encoding="utf-8").splitlines() if l.strip()]
         finally:
             args.list.unlink(missing_ok=True)
+    if args.set_scale:
+        settings.set_scale(args.set_scale)
+        from .shell import register
+
+        if register.is_installed():
+            register.install()  # refresh the check mark in the classic menu
+        return 0
     if args.register or args.unregister:
         from .shell import register
 
@@ -93,6 +103,8 @@ def main(argv=None) -> int:
     resize = None
     if args.resize_percent:
         resize = ("percent", args.resize_percent)
+    elif (args.collect or args.list) and not args.max_size and settings.get_scale() != 100:
+        resize = ("percent", settings.get_scale())  # chosen in the right-click Options menu
     elif args.max_size:
         w, _, h = args.max_size.lower().partition("x")
         resize = ("fit", (int(w or 0) or None, int(h or 0) or None))
