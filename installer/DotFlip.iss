@@ -10,6 +10,7 @@ AppVersion={#AppVersion}
 AppPublisher=dot.Flip
 DefaultDirName={autopf}\dot.Flip
 DefaultGroupName=dot.Flip
+UninstallDisplayName=dot.Flip
 UninstallDisplayIcon={app}\DotFlip.exe
 OutputDir=..\dist
 OutputBaseFilename=DotFlip-Setup-{#AppVersion}

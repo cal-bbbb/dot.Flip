@@ -27,7 +27,6 @@ static const FormatDef kFormats[] = {
 };
 static const int kFormatCount = sizeof(kFormats) / sizeof(kFormats[0]);
 static const int kMoreOptions = -1;
-static const int kOptions = -2;
 static const int kScales[] = {100, 50};  // keep in sync with dotflip/settings.py
 static const int kScaleCount = sizeof(kScales) / sizeof(kScales[0]);
 
@@ -172,9 +171,7 @@ class SubCommand : public ComBase<SubCommand, IExplorerCommand> {
 public:
     explicit SubCommand(int index) : index_(index) {}
     IFACEMETHODIMP GetTitle(IShellItemArray*, PWSTR* name) override {
-        if (index_ == kMoreOptions) return SHStrDupW(L"More options...", name);
-        if (index_ == kOptions) return SHStrDupW(L"Options", name);
-        return SHStrDupW(kFormats[index_].label, name);
+        return SHStrDupW(index_ == kMoreOptions ? L"More options..." : kFormats[index_].label, name);
     }
     IFACEMETHODIMP GetIcon(IShellItemArray*, PWSTR* icon) override { *icon = nullptr; return E_NOTIMPL; }
     IFACEMETHODIMP GetToolTip(IShellItemArray*, PWSTR* tip) override { *tip = nullptr; return E_NOTIMPL; }
@@ -184,22 +181,22 @@ public:
         return S_OK;
     }
     IFACEMETHODIMP Invoke(IShellItemArray* items, IBindCtx*) override {
-        if (index_ == kOptions) return E_NOTIMPL;
         return Launch(index_ == kMoreOptions ? nullptr : kFormats[index_].id, items);
     }
     IFACEMETHODIMP GetFlags(EXPCMDFLAGS* flags) override {
-        *flags = index_ == kOptions ? (EXPCMDFLAGS)(ECF_HASSUBCOMMANDS | ECF_SEPARATORBEFORE) : ECF_DEFAULT;
+        *flags = index_ == kMoreOptions ? ECF_SEPARATORBEFORE : ECF_DEFAULT;
         return S_OK;
     }
-    IFACEMETHODIMP EnumSubCommands(IEnumExplorerCommand** e) override;
+    IFACEMETHODIMP EnumSubCommands(IEnumExplorerCommand** e) override { *e = nullptr; return E_NOTIMPL; }
 private:
     int index_;
 };
 
-// "Scale: 100%" / "Scale: 50%" under Options; the current one is checked.
+// "Scale: 100%" / "Scale: 50%"; the current one is checked. Listed flat after a separator, because
+// Windows 11 does not display sub-menus nested inside a sub-menu.
 class ScaleCommand : public ComBase<ScaleCommand, IExplorerCommand> {
 public:
-    explicit ScaleCommand(int percent) : percent_(percent) {}
+    ScaleCommand(int percent, bool separator) : percent_(percent), separator_(separator) {}
     IFACEMETHODIMP GetTitle(IShellItemArray*, PWSTR* name) override {
         std::wstring t = L"Scale: " + std::to_wstring(percent_) + L"%";
         return SHStrDupW(t.c_str(), name);
@@ -214,17 +211,18 @@ public:
     IFACEMETHODIMP Invoke(IShellItemArray*, IBindCtx*) override {
         return RunExe(L"--set-scale " + std::to_wstring(percent_));
     }
-    IFACEMETHODIMP GetFlags(EXPCMDFLAGS* flags) override { *flags = ECF_DEFAULT; return S_OK; }
+    IFACEMETHODIMP GetFlags(EXPCMDFLAGS* flags) override {
+        *flags = separator_ ? ECF_SEPARATORBEFORE : ECF_DEFAULT;
+        return S_OK;
+    }
     IFACEMETHODIMP EnumSubCommands(IEnumExplorerCommand** e) override { *e = nullptr; return E_NOTIMPL; }
 private:
     int percent_;
+    bool separator_;
 };
-
-enum class Level { Root, Options };
 
 class EnumCommands : public ComBase<EnumCommands, IEnumExplorerCommand> {
 public:
-    explicit EnumCommands(Level level) : level_(level) {}
     IFACEMETHODIMP Next(ULONG count, IExplorerCommand** out, ULONG* fetched) override {
         ULONG n = 0;
         while (n < count && pos_ < Total()) {
@@ -237,28 +235,22 @@ public:
     IFACEMETHODIMP Skip(ULONG count) override { pos_ += count; return S_OK; }
     IFACEMETHODIMP Reset() override { pos_ = 0; return S_OK; }
     IFACEMETHODIMP Clone(IEnumExplorerCommand** out) override {
-        auto* c = new EnumCommands(level_);
+        auto* c = new EnumCommands();
         c->pos_ = pos_;
         *out = c;
         return S_OK;
     }
 private:
-    // Root: the formats, then Options (with a separator), then More options...
-    ULONG Total() const { return level_ == Level::Root ? kFormatCount + 2 : kScaleCount; }
+    // The formats, then the scale choices (after a separator), then More options...
+    ULONG Total() const { return kFormatCount + kScaleCount + 1; }
     IExplorerCommand* Make(ULONG i) const {
-        if (level_ == Level::Options) return new ScaleCommand(kScales[i]);
         if (i < (ULONG)kFormatCount) return new SubCommand((int)i);
-        return new SubCommand(i == (ULONG)kFormatCount ? kOptions : kMoreOptions);
+        i -= kFormatCount;
+        if (i < (ULONG)kScaleCount) return new ScaleCommand(kScales[i], i == 0);
+        return new SubCommand(kMoreOptions);
     }
-    Level level_;
     ULONG pos_ = 0;
 };
-
-IFACEMETHODIMP SubCommand::EnumSubCommands(IEnumExplorerCommand** e) {
-    if (index_ != kOptions) { *e = nullptr; return E_NOTIMPL; }
-    *e = new EnumCommands(Level::Options);
-    return S_OK;
-}
 
 class RootCommand : public ComBase<RootCommand, IExplorerCommand> {
 public:
@@ -281,7 +273,7 @@ public:
     IFACEMETHODIMP Invoke(IShellItemArray*, IBindCtx*) override { return E_NOTIMPL; }
     IFACEMETHODIMP GetFlags(EXPCMDFLAGS* flags) override { *flags = ECF_HASSUBCOMMANDS; return S_OK; }
     IFACEMETHODIMP EnumSubCommands(IEnumExplorerCommand** e) override {
-        *e = new EnumCommands(Level::Root);
+        *e = new EnumCommands();
         return S_OK;
     }
 };
