@@ -1,5 +1,9 @@
 # dot.Flip
 
+> *I got sick of using those websites to convert my images to icons so I made this. Overkill? Maybe. Effective? Absolutely.*
+>
+> — Cal
+
 An open-source image file-type converter for Windows.
 
 Right-click any image in Explorer → **Convert to ▸ PNG / JPEG / TIFF / GIF / WebP / BMP / ICO / AVIF**,
