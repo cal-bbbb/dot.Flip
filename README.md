@@ -26,6 +26,8 @@ certificate: choose **More info → Run anyway**. Setup asks for administrator r
 adds dot.Flip to the Windows 11 menu.
 
 ## Use
+<p align="center"><img src="docs/images/context-menu.png" width="360" alt="The Convert to right-click menu"></p>
+
 - **Right-click** one or more images → **Convert to** → pick a format. (On Windows 10, or under *Show more options*
   on Windows 11, the same submenu is in the classic menu.) **Scale: 100% / 50%** (below the formats) sets the size of right-click conversions (the choice is remembered).
   **More options…** opens the app with the files loaded.
