@@ -1,0 +1,4 @@
+LIBRARY DotFlipMenu
+EXPORTS
+    DllGetClassObject   PRIVATE
+    DllCanUnloadNow     PRIVATE
