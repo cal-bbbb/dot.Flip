@@ -205,7 +205,10 @@ public:
     IFACEMETHODIMP GetToolTip(IShellItemArray*, PWSTR* tip) override { *tip = nullptr; return E_NOTIMPL; }
     IFACEMETHODIMP GetCanonicalName(GUID* guid) override { *guid = GUID_NULL; return S_OK; }
     IFACEMETHODIMP GetState(IShellItemArray*, BOOL, EXPCMDSTATE* state) override {
-        *state = CurrentScale() == percent_ ? (EXPCMDSTATE)(ECS_ENABLED | ECS_CHECKED) : ECS_ENABLED;
+        // ECS_CHECKED only draws a mark when ECS_CHECKBOX is also set; without it Explorer
+        // silently ignores the checked bit.
+        *state = CurrentScale() == percent_ ? (EXPCMDSTATE)(ECS_ENABLED | ECS_CHECKBOX | ECS_CHECKED)
+                                             : (EXPCMDSTATE)(ECS_ENABLED | ECS_CHECKBOX);
         return S_OK;
     }
     IFACEMETHODIMP Invoke(IShellItemArray*, IBindCtx*) override {
