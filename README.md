@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/icon.png" width="96" alt="dot.Flip logo"></p>
+
 # dot.Flip
 
 > *I got sick of using those websites to convert my images to icons so I made this. Overkill? Maybe. Effective? Absolutely.*
@@ -14,6 +16,8 @@ or open the desktop app to batch-convert with full control over quality, resizin
 - Works in the Windows 11 right-click menu *and* the classic menu
 - Transparency is flattened onto a colour you choose when the target has no alpha; animated GIF/WebP stay animated
 - Originals are never deleted unless you ask; existing files are never overwritten unless you ask
+
+![The dot.Flip converter window](docs/images/converter-window.png)
 
 ## Install
 Download **DotFlip-Setup-x.y.z.exe** from the [latest release](https://github.com/cal-bbbb/dot.Flip/releases/latest)
