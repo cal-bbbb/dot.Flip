@@ -43,7 +43,8 @@ Write-Host "== 1/4 PyInstaller" -ForegroundColor Cyan
 & $py tools\make_icons.py
 $env:PYTHONPATH = "src"
 & $py -m PyInstaller --noconfirm --clean --windowed --name DotFlip --icon assets\DotFlip.ico `
-  --paths src --collect-all pillow_heif --collect-all resvg_py --exclude-module tkinter run.py
+  --paths src --collect-all pillow_heif --collect-all resvg_py --exclude-module tkinter `
+  --add-data "assets;assets" run.py
 if ($LASTEXITCODE) { throw "PyInstaller failed" }
 
 Write-Host "== 2/4 Shell extension" -ForegroundColor Cyan

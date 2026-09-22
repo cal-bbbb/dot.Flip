@@ -2,14 +2,15 @@
 from __future__ import annotations
 
 import os
+import sys
 import threading
 from pathlib import Path
 
 from PySide6.QtCore import QSettings, Qt, QThread, Signal
-from PySide6.QtGui import QAction, QColor
+from PySide6.QtGui import QAction, QColor, QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView, QApplication, QCheckBox, QColorDialog, QComboBox, QDoubleSpinBox, QFileDialog, QFormLayout,
-    QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMessageBox, QProgressBar, QPushButton, QSpinBox,
+    QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMenu, QMessageBox, QProgressBar, QPushButton, QSpinBox,
     QSplitter, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
@@ -35,6 +36,12 @@ class Worker(QThread):
         self.finished_all.emit(res)
 
 
+def _asset_dir() -> Path:
+    """Repo-root ``assets/`` in dev, or the copy PyInstaller bundles alongside the frozen app."""
+    base = getattr(sys, "_MEIPASS", None)
+    return Path(base) / "assets" if base else Path(__file__).resolve().parents[3] / "assets"
+
+
 def _human(n: int) -> str:
     for unit in ("B", "KB", "MB", "GB"):
         if n < 1024 or unit == "GB":
@@ -52,6 +59,8 @@ class MainWindow(QMainWindow):
         self.worker: Worker | None = None
         self.bg = QColor(255, 255, 255)
         self.rows: dict[Path, int] = {}
+
+        header = self._build_header()
 
         splitter = QSplitter()
         splitter.addWidget(self._build_files())
@@ -74,10 +83,10 @@ class MainWindow(QMainWindow):
 
         central = QWidget()
         lay = QVBoxLayout(central)
+        lay.addLayout(header)
         lay.addWidget(splitter, 1)
         lay.addLayout(bottom)
         self.setCentralWidget(central)
-        self._build_menu()
         self.add_files(files)
         self.statusBar().showMessage("Drop images or folders here")
 
@@ -185,12 +194,25 @@ class MainWindow(QMainWindow):
         self._target_changed()
         return box
 
-    def _build_menu(self):
-        m = self.menuBar().addMenu("&Explorer integration")
+    def _build_header(self) -> QHBoxLayout:
+        row = QHBoxLayout()
+        row.addStretch(1)
+
+        settings_menu = QMenu(self)
         for text, fn in (("Install right-click menu", self.install_menu), ("Remove right-click menu", self.remove_menu)):
             a = QAction(text, self)
             a.triggered.connect(fn)
-            m.addAction(a)
+            settings_menu.addAction(a)
+        settings_btn = QPushButton("Settings")
+        settings_btn.setMenu(settings_menu)
+        row.addWidget(settings_btn)
+
+        logo = QLabel()
+        pixmap = QPixmap(str(_asset_dir() / "icon.png"))
+        if not pixmap.isNull():
+            logo.setPixmap(pixmap.scaledToHeight(28, Qt.SmoothTransformation))
+        row.addWidget(logo)
+        return row
 
     # ---- settings helpers --------------------------------------------
     def _target_changed(self):
