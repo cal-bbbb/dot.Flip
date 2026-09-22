@@ -1,4 +1,10 @@
+<p align="center"><img src="assets/icon.png" width="96" alt="dot.Flip logo"></p>
+
 # dot.Flip
+
+> *I got sick of using those websites to convert my images to icons so I made this. Overkill? Maybe. Effective? Absolutely.*
+>
+> — Cal
 
 An open-source image file-type converter for Windows.
 
@@ -11,6 +17,8 @@ or open the desktop app to batch-convert with full control over quality, resizin
 - Transparency is flattened onto a colour you choose when the target has no alpha; animated GIF/WebP stay animated
 - Originals are never deleted unless you ask; existing files are never overwritten unless you ask
 
+![The dot.Flip converter window](docs/images/converter-window.png)
+
 ## Install
 Download **DotFlip-Setup-x.y.z.exe** from the [latest release](https://github.com/cal-bbbb/dot.Flip/releases/latest)
 and run it. Windows may show a SmartScreen warning because the installer is not yet signed by a commercial
@@ -18,6 +26,8 @@ certificate: choose **More info → Run anyway**. Setup asks for administrator r
 adds dot.Flip to the Windows 11 menu.
 
 ## Use
+<p align="center"><img src="docs/images/context-menu.png" width="360" alt="The Convert to right-click menu"></p>
+
 - **Right-click** one or more images → **Convert to** → pick a format. (On Windows 10, or under *Show more options*
   on Windows 11, the same submenu is in the classic menu.) **Scale: 100% / 50%** (below the formats) sets the size of right-click conversions (the choice is remembered).
   **More options…** opens the app with the files loaded.
