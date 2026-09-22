@@ -103,14 +103,6 @@ class MainWindow(QMainWindow):
         self.table.verticalHeader().setVisible(False)
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.setColumnWidth(0, 300)
-        row = QHBoxLayout()
-        for text, fn in (("Add files...", self.pick_files), ("Add folder...", self.pick_folder),
-                         ("Remove selected", self.remove_selected), ("Clear", self.clear)):
-            b = QPushButton(text)
-            b.clicked.connect(fn)
-            row.addWidget(b)
-        row.addStretch(1)
-        lay.addLayout(row)
         lay.addWidget(self.table, 1)
         return box
 
@@ -197,6 +189,11 @@ class MainWindow(QMainWindow):
 
     def _build_header(self) -> QHBoxLayout:
         row = QHBoxLayout()
+        for text, fn in (("Add files...", self.pick_files), ("Add folder...", self.pick_folder),
+                         ("Remove selected", self.remove_selected), ("Clear", self.clear)):
+            b = QPushButton(text)
+            b.clicked.connect(fn)
+            row.addWidget(b)
         row.addStretch(1)
 
         settings_menu = QMenu(self)
