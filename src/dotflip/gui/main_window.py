@@ -7,10 +7,10 @@ import threading
 from pathlib import Path
 
 from PySide6.QtCore import QSettings, Qt, QThread, Signal
-from PySide6.QtGui import QAction, QColor, QPixmap
+from PySide6.QtGui import QAction, QColor, QIcon
 from PySide6.QtWidgets import (
     QAbstractItemView, QApplication, QCheckBox, QColorDialog, QComboBox, QDoubleSpinBox, QFileDialog, QFormLayout,
-    QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMenu, QMessageBox, QProgressBar, QPushButton, QSpinBox,
+    QGroupBox, QHBoxLayout, QLineEdit, QMainWindow, QMenu, QMessageBox, QProgressBar, QPushButton, QSpinBox,
     QSplitter, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
@@ -53,6 +53,7 @@ class MainWindow(QMainWindow):
     def __init__(self, files=()):
         super().__init__()
         self.setWindowTitle("dot.Flip")
+        self.setWindowIcon(QIcon(str(_asset_dir() / "icon.png")))  # top-left of the title bar, and the taskbar
         self.resize(1000, 640)
         self.setAcceptDrops(True)
         self.settings = QSettings("dotflip", "dotflip")
@@ -206,12 +207,6 @@ class MainWindow(QMainWindow):
         settings_btn = QPushButton("Settings")
         settings_btn.setMenu(settings_menu)
         row.addWidget(settings_btn)
-
-        logo = QLabel()
-        pixmap = QPixmap(str(_asset_dir() / "icon.png"))
-        if not pixmap.isNull():
-            logo.setPixmap(pixmap.scaledToHeight(28, Qt.SmoothTransformation))
-        row.addWidget(logo)
         return row
 
     # ---- settings helpers --------------------------------------------
