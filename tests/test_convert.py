@@ -4,7 +4,7 @@ import pytest
 from PIL import Image
 
 from dotflip.core.batch import run_batch
-from dotflip.core.convert import ConversionError, ConvertOptions, convert
+from dotflip.core.convert import ConversionError, ConvertOptions, convert, crop_box
 from dotflip.core.formats import WRITABLE, get_format
 
 SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="30"><rect width="40" height="30" fill="red"/></svg>'
@@ -78,6 +78,30 @@ def test_resize_percent_and_fit(rgba):
         assert im.size == (32, 24)
 
 
+def test_crop_box_picks_correct_region():
+    img = Image.new("RGB", (100, 50), "red")
+    for x in range(50, 100):
+        for y in range(50):
+            img.putpixel((x, y), (0, 0, 255))
+    left = crop_box(img, 0.0, 0.0, 0.5, 1.0)
+    right = crop_box(img, 0.5, 0.0, 1.0, 1.0)
+    assert left.size == (50, 50) == right.size
+    assert left.getpixel((10, 10)) == (255, 0, 0)
+    assert right.getpixel((10, 10)) == (0, 0, 255)
+
+
+def test_crop_box_handles_reversed_coordinates():
+    img = Image.new("RGB", (100, 50), "red")
+    out = crop_box(img, 0.5, 1.0, 0.0, 0.0)  # x1 < x0, y1 < y0
+    assert out.size == (50, 50)
+
+
+def test_resize_crop_through_convert(rgba):
+    out = convert(rgba, ConvertOptions(target="png", resize=("crop", (0.0, 0.0, 0.5, 0.5))))
+    with Image.open(out) as im:
+        assert im.size == (32, 24)  # rgba fixture is 64x48
+
+
 def test_animated_gif_to_webp_keeps_frames(tmp_path):
     src = tmp_path / "a.gif"
     frames = [Image.new("RGB", (20, 20), c) for c in ("red", "green", "blue")]
@@ -135,6 +159,17 @@ def test_batch_isolates_failures(rgba, tmp_path):
     bad.write_bytes(b"nope")
     results = run_batch([rgba, bad], ConvertOptions(target="webp"))
     assert results[0].ok and not results[1].ok
+
+
+def test_batch_per_file_options(tmp_path):
+    a, b = tmp_path / "a.png", tmp_path / "b.png"
+    Image.new("RGB", (30, 30), "red").save(a)
+    Image.new("RGB", (30, 30), "blue").save(b)
+    per_file = {a: ConvertOptions(target="jpeg"), b: ConvertOptions(target="webp")}
+    results = run_batch([a, b], per_file)
+    assert all(r.ok for r in results)
+    assert results[0].output.suffix == ".jpg"
+    assert results[1].output.suffix == ".webp"
 
 
 def test_batch_same_stem_different_sources_get_distinct_outputs(tmp_path):

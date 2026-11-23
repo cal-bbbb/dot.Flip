@@ -30,7 +30,10 @@ class ConversionError(Exception):
 class ConvertOptions:
     target: str = "png"
     format_options: dict = field(default_factory=dict)  # per-format overrides, see formats.Option
-    # resize: None | ("percent", 50) | ("fit", (w, h))  (fit keeps aspect, never upscales)
+    # resize: None | ("percent", 50) | ("fit", (w, h)) | ("crop", (x0, y0, x1, y1))
+    # fit keeps aspect and never upscales; crop keeps the (x0, y0)-(x1, y1) box, each 0..1 and
+    # normalized to this image's own size (the GUI's crop tool works in these coordinates so the
+    # same box applies sensibly across a batch of differently-sized images)
     resize: tuple | None = None
     background: tuple = (255, 255, 255)  # used when flattening alpha
     keep_metadata: bool = True
@@ -72,10 +75,26 @@ def _load(src: Path, fmt: Format | None, opts: ConvertOptions) -> Image.Image:
         raise ConversionError(f"Could not open {src.name}: {e}") from e
 
 
+def crop_box(img: Image.Image, x0: float, y0: float, x1: float, y1: float) -> Image.Image:
+    """Crop the (x0, y0)-(x1, y1) box, each 0..1 and normalized to this image's own size.
+
+    Shared by the converter and the GUI's crop preview, so the preview never drifts from the
+    actual output. A pure crop at the source's native resolution: nothing is scaled or upscaled.
+    """
+    w, h = img.size
+    x0, x1 = sorted((min(max(x0, 0.0), 1.0), min(max(x1, 0.0), 1.0)))
+    y0, y1 = sorted((min(max(y0, 0.0), 1.0), min(max(y1, 0.0), 1.0)))
+    left, top = round(x0 * w), round(y0 * h)
+    right, bottom = max(left + 1, round(x1 * w)), max(top + 1, round(y1 * h))
+    return img.crop((left, top, min(right, w), min(bottom, h)))
+
+
 def _resize(img: Image.Image, spec) -> Image.Image:
     if not spec:
         return img
     kind, val = spec
+    if kind == "crop":
+        return crop_box(img, *val)
     w, h = img.size
     if kind == "percent":
         nw, nh = max(1, round(w * val / 100)), max(1, round(h * val / 100))
