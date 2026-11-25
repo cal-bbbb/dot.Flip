@@ -1,7 +1,6 @@
 """Install / remove the Explorer right-click "Convert to" submenu (per-user, no admin)."""
 from __future__ import annotations
 
-import subprocess
 import sys
 from pathlib import Path
 
@@ -35,32 +34,17 @@ def _delete_tree(winreg, root, path: str) -> None:
         pass
 
 
-def windows11_menu_installed() -> bool:
-    """True if the sparse package behind the Windows 11 menu is registered for this user.
-
-    That handler also appears under "Show more options", so the classic verbs would duplicate it.
-    """
-    try:
-        r = subprocess.run(
-            ["powershell.exe", "-NoProfile", "-Command", "if (Get-AppxPackage -Name DotFlip.ContextMenu) { 'yes' }"],
-            capture_output=True, text=True, timeout=30, creationflags=0x08000000,  # CREATE_NO_WINDOW
-        )
-        return "yes" in r.stdout
-    except (OSError, subprocess.SubprocessError):
-        return False
-
-
 def install(extensions=None) -> int:
     """Register the classic menu for every readable image extension. Returns the number of extensions.
 
-    Registers nothing (and removes stale verbs) when the Windows 11 package provides the menu,
-    otherwise the same submenu would be listed twice.
+    Installed unconditionally, even when the Windows 11 package also provides the menu: the
+    modern handler only appears inside File Explorer, so the classic verbs are what makes
+    right-click conversion work in other apps' Open/Save dialogs and on the desktop. The
+    tradeoff is that File Explorer's "Show more options" view can list "Convert to" twice
+    (once from each mechanism).
     """
     import winreg
 
-    if windows11_menu_installed():
-        uninstall()
-        return 0
     prefix = _command_prefix()
     exts = list(extensions or READ_EXTENSIONS)
     for ext in exts:

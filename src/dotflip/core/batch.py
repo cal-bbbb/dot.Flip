@@ -25,21 +25,27 @@ class Result:
 
 def run_batch(
     files,
-    opts: ConvertOptions,
+    opts: ConvertOptions | dict,
     on_progress: Callable[[int, int, Result], None] | None = None,
     cancel: threading.Event | None = None,
     workers: int = 4,
 ) -> list[Result]:
-    """Convert files concurrently. Results are returned in input order."""
+    """Convert files concurrently. Results are returned in input order.
+
+    ``opts`` is either one :class:`ConvertOptions` applied to every file, or a ``{path: options}``
+    dict for per-file settings (as the GUI uses, so a mixed-selection batch converts each file
+    with whatever it was last configured with).
+    """
     files = [Path(f) for f in files]
     cancel = cancel or threading.Event()
     results: dict[int, Result] = {}
+    opts_for = opts.__getitem__ if isinstance(opts, dict) else (lambda _src: opts)
 
     def work(i: int, src: Path) -> Result:
         if cancel.is_set():
             return Result(src, None, cancelled=True)
         try:
-            out = convert(src, opts)
+            out = convert(src, opts_for(src))
             return Result(src, out, skipped=out is None)
         except ConversionError as e:
             return Result(src, None, error=str(e))

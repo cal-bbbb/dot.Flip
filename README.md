@@ -28,10 +28,13 @@ adds dot.Flip to the Windows 11 menu.
 ## Use
 <p align="center"><img src="docs/images/context-menu.png" width="360" alt="The Convert to right-click menu"></p>
 
-- **Right-click** one or more images → **Convert to** → pick a format. (On Windows 10, or under *Show more options*
-  on Windows 11, the same submenu is in the classic menu.) **Scale: 100% / 50%** (below the formats) sets the size of right-click conversions (the choice is remembered).
+- **Right-click** one or more images → **Convert to** → pick a format. Works in File Explorer (Windows 10, or
+  Windows 11's top-level menu and under *Show more options*), the desktop, and other apps' Open/Save dialogs.
+  (On Windows 11, *Show more options* can list **Convert to** twice — once from each menu mechanism.)
+  **Scale: 100% / 50%** (below the formats) sets the size of right-click conversions (the choice is remembered).
   **More options…** opens the app with the files loaded.
-- **App:** drag in files or folders, choose a format, tune options, press Convert.
+- **App:** drag in files or folders, choose a format, tune options — including a non-destructive crop tool with
+  a draggable/resizable box, ratio presets (or freeform/custom), and a 3x3 origin picker — press Convert.
 - **Command line:** `DotFlip.exe --to webp --quality 80 photo.png` (see `--help`).
 
 ## Build from source
@@ -42,9 +45,9 @@ python -m venv .venv
 .venv\Scripts\pip install -e .[dev]
 .venv\Scripts\python -m pytest
 .venv\Scripts\python -m dotflip.cli            # run the GUI from source
-powershell -ExecutionPolicy Bypass -File tools\build_release.ps1 -Version 1.0.0
+powershell -ExecutionPolicy Bypass -File tools\build_release.ps1 -Version 1.1.0
 ```
-Output: `dist\DotFlip-Setup-1.0.0.exe`. The script builds the PyInstaller bundle, the C++ shell extension
+Output: `dist\DotFlip-Setup-1.1.0.exe`. The script builds the PyInstaller bundle, the C++ shell extension
 (`shellext/`), a signed sparse MSIX package, and the installer (`installer/DotFlip.iss`).
 
 ## How the right-click menus work
